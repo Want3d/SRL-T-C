@@ -1,13 +1,28 @@
-{$DEFINE SRL_DRAWING_INCLUDED}
-{$IFNDEF SRL_UTILS}
-  {$I SRL/utils.simba}
-{$ENDIF}
-
 (*
-Drawing
-=======
+# Drawing
 Extends TMufasaBitmap with mostly drawing functions.
 *)
+{$DEFINE SRL_DRAWING_INCLUDED}
+{$IFNDEF SRL_UTILS}
+  {$I SRL-T/utils.simba}
+{$ENDIF}
+
+
+function TSRL.CalculateTransparency(oldColor, newColor: Int32; alpha: Single; fast: Boolean = True): Int32;
+var
+  r, g, b, r2, g2, b2: Int32;
+  vec: Vector3;
+begin
+  if fast then
+    Exit(Round(alpha * newColor + (1 - alpha) * oldColor));
+
+  ColorToRGB(oldColor, r, g, b);
+  ColorToRGB(newColor, r2, g2, b2);
+
+  vec := Vec3(r2,g2,b2) * alpha + Vec3(r,g,b) * (1-alpha);
+
+  Result := RGBtoColor(Round(vec.x), Round(vec.y), Round(vec.z));
+end;
 
 type
   TMufasaBitmapArray = array of TMufasaBitmap;
@@ -44,42 +59,234 @@ var
   ];  
   
 (*
-TMufasaBitmap.FromClient
-~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: pascal
-
-    procedure TMufasaBitmap.FromClient(Area: TBox);
-
+## TMufasaBitmap.FromClient
+```pascal
+procedure TMufasaBitmap.FromClient(Area: TBox);
+```
 Copy client to bitmap.
 *)
-procedure TMufasaBitmap.FromClient(Area: TBox=[0,0,-1,-1]);
-var 
-  W,H: Int32;
+
+procedure TMufasaBitmap.Create(w, h: Int32);
 begin
-  client.GetIOManager.GetDimensions(W,H);
-  if Area = TBox([0,0,-1,-1]) then Area := [0,0,W-1,H-1];
-  if (self <> nil) and (self.GetIndex() <> -1) then self.Free();
-  Self.Init(client.GetMBitmaps);
-  Self.CopyClientToBitmap(client.GetIOManager, True, Area.X1, Area.Y1, Area.X2, Area.Y2);
+  Self.Init();
+  Self.SetSize(w, h);
 end;
-  
-procedure TMufasaBitmap.Clear; constref; overload;
+
+function TMufasaBitmap.Copy(b: TBox): TMufasaBitmap; overload;
+begin
+  Result := Self.Copy(b.X1, b.Y1, b.X2, b.Y2);
+end;
+
+procedure TMufasaBitmap.Crop(b: TBox); overload;
+begin
+  Self.Crop(b.X1, b.Y1, b.X2, b.Y2);
+end;
+
+procedure TMufasaBitmap.FromClient(area: TBox = [0,0,-1,-1]);
+var
+  w,h: Int32;
+begin
+  if area = [0,0,-1,-1] then
+  begin
+    Client.GetIOManager().GetDimensions(w,h);
+    area := [0,0,w-1,h-1];
+  end;
+
+  if (self <> nil) and (self.GetIndex() <> -1) then
+    Self.Free();
+
+  Self.Init(Client.GetMBitmaps());
+  Self.CopyClientToBitmap(Client.GetIOManager(), True, area.X1, area.Y1, area.X2, area.Y2);
+end;
+
+procedure TMufasaBitmap.FromFile(path: String);
+begin
+  if (self <> nil) and (self.GetIndex() <> -1) then self.Free();
+  Self.Init();
+  Self.LoadFromFile(path);
+end;
+
+function TMufasaBitmap.Bounds(): TBox;
+begin
+  Result := [0, 0, Self.getWidth()-1, Self.getHeight()-1];
+end;
+
+procedure TMufasaBitmap.Clear(); constref; overload;
 begin
   Self.DrawClear(0);
 end;
 
-procedure TMufasaBitmap.Clear(Area: TBox); constref; overload;
+procedure TMufasaBitmap.Clear(area: TBox); constref; overload;
 begin
   Self.DrawBoxFilled(Area, False, 0);
 end;
 
+function TMufasaBitmap.GetPixel(p: TPoint): TColor; overload;
+begin
+  Result := Self.GetPixel(p.X, p.Y);
+end;
+
+
+function TMufasaBitmap.Mirror(style: TBmpMirrorStyle): TMufasaBitmap;
+begin
+  client.getMBitmaps().AddBMP(Self);
+  Result := GetMufasaBitmap(CreateMirroredBitmapEx(Self.getIndex(), style));
+end;
+
+
+function TMufasaBitmap.RotateClockWise(): TMufasaBitmap;
+var
+  tmp: TMufasaBitmap;
+begin
+  tmp := Self.Mirror(TBmpMirrorStyle.MirrorLine);
+  Result := tmp.Mirror(TBmpMirrorStyle.MirrorWidth);
+  tmp.Free();
+end;
+
+function TMufasaBitmap.RotateClockWise(times: Int32): TMufasaBitmap; overload;
+var
+  i: Int32;
+  tmp1, tmp2: TMufasaBitmap;
+begin
+  tmp1 := Self.Copy();
+  if times < 1 then
+    Exit(tmp1);
+
+  for i := 1 to times do
+  begin
+    tmp2 := tmp1.RotateClockWise();
+    tmp1.Free();
+    tmp1 := tmp2.Copy();
+  end;
+
+  Result := tmp1;
+end;
+
+function TMufasaBitmap.RotateCounterClockWise(): TMufasaBitmap;
+var
+  tmp: TMufasaBitmap;
+begin
+  tmp := Self.Mirror(TBmpMirrorStyle.MirrorLine);
+  Result := tmp.Mirror(TBmpMirrorStyle.MirrorHeight);
+  tmp.Free();
+end;
+
+function TMufasaBitmap.RotateCounterClockWise(times: Int32): TMufasaBitmap; overload;
+var
+  i: Int32;
+  tmp1, tmp2: TMufasaBitmap;
+begin
+  tmp1 := Self.Copy();
+  if times < 1 then
+    Exit(tmp1);
+
+  for i := 1 to times do
+  begin
+    tmp2 := tmp1.RotateCounterClockWise();
+    tmp1.Free();
+    tmp1 := tmp2.Copy();
+  end;
+
+  Result := tmp1;
+end;
+
+
+function TMufasaBitmap.Data(): TIntegerArray;
+begin
+  SetLength(Result, Self.getWidth()*Self.getHeight());
+  Move(Self.getData()^, Result[0], length(Result));
+end;
+
+//credits: https://github.com/Torwent/Simba/blob/27ae9e3459e0614b07eb1309ae223c303c46e05c/Source/MML/simba.tpa.pas#L2440C10-L2440C21
+function TMufasaBitmap.ColorsInLine(p, q: TPoint; colors: TIntegerArray): Boolean;
+var
+  Xinc, YInc: Int32;
+  TwoDxAccumulatedError, TwoDyAccumulatedError: Integer;
+  current, d, twoD: TPoint;
+begin
+  d := [(q.X-p.X), (q.Y-p.Y)];
+  twoD := [d.X + d.X, d.Y + d.Y];
+  current := p;
+  Xinc := 1;
+  Yinc := 1;
+
+  if (d.X < 0) then
+  begin
+    Xinc := -1;
+    d.X := - d.X;
+    twoD.X := - twoD.X;
+  end;
+
+  if (d.Y < 0) then
+  begin
+    Yinc := -1;
+    d.Y := -d.Y;
+    twoD.Y := - twoD.Y;
+  end;
+
+  if ((d.X = 0) and (D.Y = 0)) then
+    Exit;
+
+  if (d.Y <= d.X) then
+  begin
+    repeat
+      Inc(current.X, Xinc);
+      Inc(TwoDxAccumulatedError, twoD.Y);
+      if (TwoDxAccumulatedError > d.X) then
+      begin
+        Inc(current.Y, Yinc);
+        Dec(TwoDxAccumulatedError, twoD.X);
+      end;
+
+      if Self.GetPixel(current) in colors then Exit(True);
+    until (current.X = q.X);
+
+    Exit;
+  end;
+
+  repeat
+    Inc(current.Y, Yinc);
+    Inc(TwoDyAccumulatedError, twoD.X);
+
+    if (TwoDyAccumulatedError > d.Y) then
+    begin
+      Inc(current.X, Xinc);
+      Dec(TwoDyAccumulatedError, twoD.Y);
+    end;
+
+    if Self.GetPixel(current) in colors then Exit(True);
+  until (current.Y = q.Y);
+end;
+
+//manhatten line.
+function TMufasaBitmap.ColorsInLineEx(p, q: TPoint; colors: TIntegerArray): Boolean;
+var
+  x, y: Int32;
+  pXCross, pYCross, qXCross, qYCross: Boolean;
+begin
+  for x := Min(p.X, q.X) to Max(p.X, q.X) do
+  begin
+    if not pXCross then pXCross := Self.GetPixel(x, p.Y) in colors;
+    if not qXCross then qXCross := Self.GetPixel(x, q.Y) in colors;
+    if pXCross and qXCross then Exit(True);
+  end;
+
+  for y := Min(p.Y, q.Y) to Max(p.Y, q.Y) do
+  begin
+    if not pYCross then pYCross := Self.GetPixel(p.X, y) in colors;
+    if not qYCross then qYCross := Self.GetPixel(q.X, y) in colors;
+    if pYCross and qYCross then Exit(True);
+  end;
+
+  Result := (pXCross and pYCross) or (qXCross and qYCross);
+end;
+
+
 (*
-TMufasaBitmap.ClearAllBut
-~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: pascal
-
-    procedure TMufasaBitmap.ClearAllBut(Area: TBox);
-
+## TMufasaBitmap.ClearAllBut
+```pascal
+procedure TMufasaBitmap.ClearAllBut(Area: TBox);
+```
 Will clear the image, except for the given area.
 *)
 procedure TMufasaBitmap.ClearAllBut(Area: TBox); constref;
@@ -88,12 +295,10 @@ begin
 end;
 
 (*
-TMufasaBitmap.AvgBrightness
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: pascal
-
-    procedure TMufasaBitmap.AvgBrightness(Area: TBox = [0,0,-1,-1]);
-
+## TMufasaBitmap.AvgBrightness
+```pascal
+procedure TMufasaBitmap.AvgBrightness(Area: TBox = [0,0,-1,-1]);
+```
 Returns a value between 0 and 100 that defines how bright the image is.
 *)
 function TMufasaBitmap.AvgBrightness(Area: TBox = [0,0,-1,-1]): Int32; constref;
@@ -118,12 +323,10 @@ begin
 end;
 
 (*
-TMufasaBitmap.PeakBrightness
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: pascal
-
-    procedure TMufasaBitmap.PeakBrightness(Area: TBox = [0,0,-1,-1]);
-
+## TMufasaBitmap.PeakBrightness
+```pascal
+procedure TMufasaBitmap.PeakBrightness(Area: TBox = [0,0,-1,-1]);
+```
 Returns the maximum brightness in the image in the range `0..100`.
 *)
 function TMufasaBitmap.PeakBrightness(Area: TBox = [0,0,-1,-1]): Int32; constref;
@@ -150,12 +353,10 @@ begin
 end;
 
 (*
-TMufasaBitmap.DrawBox
-~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: pascal
-
-    procedure TMufasaBitmap.DrawBox(Center:TPoint; Radius:UInt32; Fill: Boolean; Color: Int32);
-
+## TMufasaBitmap.DrawBox
+```pascal
+procedure TMufasaBitmap.DrawBox(Center:TPoint; Radius:UInt32; Fill: Boolean; Color: Int32);
+```
 Draws a TBox onto the TMufasaBitmap
 *)
 procedure TMufasaBitmap.DrawBox(Center:TPoint; Radius:UInt32; Color: Int32); constref; overload;
@@ -187,12 +388,10 @@ begin
 end;
 
 (*
-TMufasaBitmap.DrawRect
-~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: pascal
-
-    procedure TMufasaBitmap.DrawRect(Rect: TRectangle; Color: Int32);
-
+## TMufasaBitmap.DrawRect
+```pascal
+procedure TMufasaBitmap.DrawRect(Rect: TRectangle; Color: Int32);
+```
 Draws a TRectangle onto the TMufasaBitmap
 *)
 procedure TMufasaBitmap.DrawRect(Rect: TRectangle; Color: Int32); constref;
@@ -208,13 +407,39 @@ begin
   Self.DrawRect([Top.Right, Btm.Right, Btm.Btm, Top.Btm], Color);
 end;
 
+
+procedure TMufasaBitmap.DrawCuboid(cuboid: TCuboid; color: Integer = $0000FF); constref; overload;
+begin
+  Self.DrawTPA(cuboid.Edges(), color);
+end;
+
+procedure TMufasaBitmap.DrawCuboidArray(cuboids: TCuboidArray; color: Integer = $0000FF); constref; overload;
+var
+  c: TCuboid;
+begin
+  for c in cuboids do
+    Self.DrawCuboid(c, color);
+end;
+
+procedure TMufasaBitmap.DrawCuboid(cuboid: TCuboidEx; color: Int32 = $0000FF); constref; overload;
+begin
+  Self.DrawTPA(cuboid.Edges(), color);
+end;
+
+procedure TMufasaBitmap.DrawCuboidArray(cuboids: TCuboidExArray; color: Int32 = $0000FF); constref; overload;
+var
+  c: TCuboidEx;
+begin
+  for c in cuboids do
+    Self.DrawCuboid(c, color);
+end;
+
+
 (*
-TMufasaBitmap.DrawPoly
-~~~~~~~~~~~~~~~~~~~~~~
-.. code-block:: pascal
-
-    procedure TMufasaBitmap.DrawPoly(Poly: TPointArray; Color: Int32);
-
+## TMufasaBitmap.DrawPoly
+```pascal
+procedure TMufasaBitmap.DrawPoly(Poly: TPointArray; Color: Int32);
+```
 Draws a polygon onto the TMufasaBitmap
 *)
 procedure TMufasaBitmap.DrawPoly(Poly: TPointArray; Color: Int32); constref;
@@ -230,12 +455,29 @@ end;
 procedure TMufasaBitmap.DrawCross(Center: TPoint; Radius: Integer; Color: Int32); constref;
 begin
   Radius := Round(Radius/2*Sqrt(2));
-  
+
   if (Radius > 1) then
     with Center do
     begin
       Self.LineTo(Point(X - Radius, Y - Radius), Point(X + Radius, Y + Radius), Color);
       Self.LineTo(Point(X + Radius, Y - Radius), Point(X - Radius, Y + Radius), Color);
+    end;
+end;
+
+procedure TMufasaBitmap.DrawBorderedCross(Center: TPoint; Radius: Integer; Color: Int32; Border: Int32 = $0); constref;
+var
+  cross, tpa: TPointArray;
+begin
+  Radius := Round(Radius/2*Sqrt(2));
+
+  if (Radius > 1) then
+    with Center do
+    begin
+      cross := TPAFromLine(Point(X - Radius, Y - Radius), Point(X + Radius, Y + Radius)) +
+             TPAFromLine(Point(X + Radius, Y - Radius), Point(X - Radius, Y + Radius));
+      tpa := cross.Grow(1);
+      Self.DrawTPA(tpa, border);
+      Self.DrawTPA(cross, Color);
     end;
 end;
 
@@ -266,58 +508,8 @@ begin
   Self.DrawBox(Box, BoxColor);
 end;
 
-procedure TMufasaBitmap.Debug;
+procedure TMufasaBitmap.Debug();
 begin
   ShowBitmap(Self);
 end;
 
-procedure Debug(ATPA: T2DPointArray); overload;
-var
-  Bitmap: TMufasaBitmap;
-  I: Int32;
-begin
-  Bitmap.FromClient();
-  
-  for I := 0 to High(ATPA) do
-    Bitmap.DrawTPA(ATPA[I], DEBUG_COLORS[I mod Length(DEBUG_COLORS)]);
-  
-  Bitmap.Debug();
-  Bitmap.Free();
-end;
-
-procedure Debug(TPA: TPointArray); overload;
-begin
-  Debug([TPA]); 
-end;
-
-procedure Debug(R: TRectangle); overload;
-begin
-  Debug(R.ToTPA.Connect());
-end;
-
-procedure Debug(Box: TBox); overload;
-begin
-  Debug(EdgeFromBox(Box));
-end;
-
-procedure Debug(Boxes: TBoxArray); overload;
-var
-  ATPA: T2DPointArray;
-  I: Int32;
-begin
-  SetLength(ATPA, Length(Boxes));
-  for I := 0 to High(ATPA) do
-    ATPA[I] := EdgeFromBox(Boxes[I]);
-  
-  Debug(ATPA);
-end;
-
-procedure Debug(Matrix: T2DIntegerArray); overload;
-var
-  Bitmap: TMufasaBitmap;
-begin
-  Bitmap.Init();
-  Bitmap.DrawMatrix(Matrix);
-  Bitmap.Debug();
-  Bitmap.Free();
-end;

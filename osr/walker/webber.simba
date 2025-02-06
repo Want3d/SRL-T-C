@@ -1,9 +1,10 @@
 (*
-Webber
-======
+# Webber
+
+For TRSMap and TRSWalkerV2 user SRL-T/tools/webber.simba
 *)
 
-{$I SRL/osr.simba}
+{$I SRL-T/osr.simba}
 
 type
   TWebberForm = record

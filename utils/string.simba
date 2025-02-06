@@ -1,11 +1,10 @@
 {$DEFINE SRL_STRING_INCLUDED}
 {$IFNDEF SRL_UTILS}
-  {$I SRL/utils.simba}
+  {$I SRL-T/utils.simba}
 {$ENDIF}
 
 (*
-String
-======
+# String
 String related methods
 *)
 
@@ -14,22 +13,22 @@ const
   STR_NEW_LINE = #13#10;
 
 (*
-String.Len
-~~~~~~~~~~~~~~~
-.. pascal:: function String.Len(): Int32; constref;
-
+## String.Len
+```pascal
+function String.Len(): Int32; constref;
+```
 Returns the length of the string
 *)
-function String.Len: Int32; constref;
+function String.Len(): Int32; constref;
 begin
   Result := Length(Self);
 end;
 
 (*
-String.Pos
-~~~~~~~~~~~~~~~
-.. pascal:: function String.Pos(SubStr: String): Int32; constref;
-
+## String.Pos
+```pascal
+function String.Pos(SubStr: String): Int32; constref;
+```
 Returns the position of the position of the first occurance of the substring
 *)
 function String.Pos(SubStr: String): Int32; constref;
@@ -38,10 +37,10 @@ begin
 end;
 
 (*
-String.PosR
-~~~~~~~~~~~~~~~
-.. pascal:: function String.PosR(SubStr: String): Int32; constref;
-
+## String.PosR
+```pascal
+function String.PosR(SubStr: String): Int32; constref;
+```
 Returns the position of the position of the last occurance of the substring
 *)
 function String.PosR(SubStr: String): Int32; constref; 
@@ -56,10 +55,10 @@ begin
 end;
 
 (*
-String.PosEx
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.PosEx(SubStr: String): TIntegerArray; constref;
-
+## String.PosEx
+```pascal
+function String.PosEx(SubStr: String): TIntegerArray; constref;
+```
 Returns the position of every occurance of the substring
 *)
 function String.PosEx(SubStr: String): TIntegerArray; constref;
@@ -67,12 +66,59 @@ begin
   Result := System.PosMulti(SubStr, self);
 end;
 
-(*
-String.Startswith
-~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Startswith(Prefix: String): Boolean; constref;
 
-Returns ``True`` if the string starts with the given string ``Prefix``
+(*
+## String.Contains
+```pascal
+function String.Contains(subString: String): Boolean; constref;
+```
+Returns true if the substring exists on the string.
+*)
+function String.Contains(subString: String): Boolean; constref;
+begin
+  Result := Self.Pos(subString) > 0;
+end;
+
+(*
+## String.ContainsAny
+```pascal
+function String.ContainsAny(subStrings: TStringArray): Boolean; constref;
+```
+Returns true if any of the substrings exists on the string.
+*)
+function String.ContainsAny(subStrings: TStringArray): Boolean; constref;
+var
+  str: String;
+begin
+  for str in subStrings do
+    if Self.Contains(str) then
+      Exit(True);
+end;
+
+(*
+## String.ContainsAll
+```pascal
+function String.ContainsAll(subStrings: TStringArray): Boolean; constref;
+```
+Returns true if all of the substrings exist on the string.
+*)
+function String.ContainsAll(subStrings: TStringArray): Boolean; constref;
+var
+  str: String;
+begin
+  Result := True;
+  for str in subStrings do
+    if not Self.Contains(str) then
+      Exit(False);
+end;
+
+
+(*
+## String.Startswith
+```pascal
+function String.Startswith(Prefix: String): Boolean; constref;
+```
+Returns `True` if the string starts with the given string `Prefix`
 *)
 function String.StartsWith(Prefix: String): Boolean; constref;
 begin
@@ -80,11 +126,11 @@ begin
 end;
 
 (*
-String.Endswith
-~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Endswith(Suffix: String): Boolean; constref;
-
-Returns ``True`` if the string ends with the given string ``Suffix``
+## String.Endswith
+```pascal
+function String.Endswith(Suffix: String): Boolean; constref;
+```
+Returns `True` if the string ends with the given string `Suffix`
 *)
 function String.EndsWith(Suffix: String): Boolean; constref;
 var
@@ -100,10 +146,10 @@ begin
 end;
 
 (*
-String.Capitalize
-~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Capitalize(): String; constref;
-
+## String.Capitalize
+```pascal
+function String.Capitalize(): String; constref;
+```
 Returns the string with every word captalized
 *)
 function String.Capitalize(): String; constref;
@@ -112,10 +158,10 @@ begin
 end;
 
 (*
-String.Upper
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Upper(): String; constref;
-
+## String.Upper
+```pascal
+function String.Upper(): String; constref;
+```
 Returns the string with every character converted to uppercase
 *)
 function String.Upper(): String; constref;
@@ -124,10 +170,11 @@ begin
 end;
 
 (*
-String.Lower
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Lower(): String; constref;
-
+## String.Lower()
+```pascal
+function String.Lower(): String; constref;
+function String.ToLower(): String; constref;
+```
 Returns the string with every character converted to lowercase
 *)
 function String.Lower(): String; constref;
@@ -135,11 +182,16 @@ begin
   Result := Lowercase(Self);
 end;
 
-(*
-String.After
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.After(SubStr: String): String; constref;
+function String.ToLower(): String; constref;
+begin
+  Result := Lowercase(Self);
+end;
 
+(*
+## String.After
+```pascal
+function String.After(SubStr: String): String; constref;
+```
 Copy the string from after the first occurrence of SubStr
 *)
 function String.After(SubStr: String): String; constref;
@@ -153,10 +205,10 @@ begin
 end;
 
 (*
-String.Before
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Before(SubStr: String): String; constref;
-
+## String.Before
+```pascal
+function String.Before(SubStr: String): String; constref;
+```
 Copy the string from before the first occurrence of SubStr
 *)
 function String.Before(SubStr: String): String; constref;
@@ -168,11 +220,29 @@ begin
   Result := Copy(Self, 1, p - 1);
 end;
 
-(*
-String.Count
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Count(Str: String): Int32; constref;
+function String.Between(start, finish: String): String; constref;
+begin
+  Result := System.Between(start, finish, Self);
+end;
 
+
+
+function String.SubString(start, finish: Int32): String; constref;
+begin
+  Result := Copy(Self, start, finish);
+end;
+
+function String.SubString(finish: Int32): String; constref; overload;
+begin
+  Result := Copy(Self, 1, finish);
+end;
+
+
+(*
+## String.Count
+```pascal
+function String.Count(Str: String): Int32; constref;
+```
 Count the number of occurrences of the given string.
 *)
 function String.Count(Str: String): Int32;
@@ -181,10 +251,10 @@ begin
 end;
 
 (*
-String.Replace
-~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Replace(SubStr, ReplaceStr: String; Flags: TReplaceFlags=[rfReplaceAll]): String; constref;
-
+## String.Replace
+```pascal
+function String.Replace(SubStr, ReplaceStr: String; Flags: TReplaceFlags=[rfReplaceAll]): String; constref;
+```
 Replace [all by default] occurrences of the given SubStr with with ReplaceStr
 *)
 function String.Replace(SubStr, ReplaceStr: String; Flags: TReplaceFlags=[rfReplaceAll]): String; constref;
@@ -192,27 +262,56 @@ begin
   Result := StringReplace(Self, SubStr, ReplaceStr, Flags);
 end;
 
+function String.ReplaceAll(SubStrReplaceStrArray: array of TStringArray; Flags: TReplaceFlags=[rfReplaceAll]): String; constref;
+var
+  i: Int32;
+begin
+  Result := Self;
+  for i := 0 to High(SubStrReplaceStrArray) do
+  begin
+    if Length(SubStrReplaceStrArray[i]) <> 2 then
+      raise 'SubStrReplaceStrArray children should have only 2 elements, a SubStr and a ReplaceStr.';
+
+    Result := StringReplace(Result, SubStrReplaceStrArray[i,0], SubStrReplaceStrArray[i,1], Flags);
+  end;
+end;
+
 
 (*
-String.Explode
-~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Explode(Delimiter: String): TStringArray; constref;
-
-Blow up the string at each delimiter into smaller strings
+## String.Split
+```pascal
+function String.Split(delimiter: String): TStringArray; constref;
+```
+Split up the string at each delimiter into smaller strings
 *)
+function String.Split(delimiter: String): TStringArray; constref;
+begin
+  Result := System.Explode(delimiter, Self);
+end;
+
 function String.Explode(Delimiter: String): TStringArray; constref;
 begin
   Result := System.Explode(Delimiter, Self);
 end;
 
-{*
-String.Strip
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.Strip(Chars:String = STR_WHITESPACE): String; constref;
-
+(*
+## String.Trim
+```pascal
+function String.Trim(chars:String = STR_WHITESPACE): String; constref;
+function String.Strip(chars:String = STR_WHITESPACE): String; constref;
+```
 Return a copy of the string with leading and trailing characters removed.
-*}
-function String.Strip(Chars:String = STR_WHITESPACE): String; constref;
+*)
+function String.Trim(chars:String = STR_WHITESPACE): String; constref;
+var Lo,Hi: UInt32 = 1;
+begin
+  Hi:=Length(Self);
+  while (Lo <= Hi) and (System.Pos(Self[Lo],Chars) <> 0) do Inc(Lo);
+  while (Hi >= 1)  and (System.Pos(Self[Hi],Chars) <> 0) do Dec(Hi);
+  Result := Copy(Self, Lo, Hi-Lo+1);
+end;
+
+function String.Strip(chars:String = STR_WHITESPACE): String; constref;
 var Lo,Hi: UInt32 = 1;
 begin
   Hi:=Length(Self);
@@ -223,10 +322,10 @@ end;
 
 
 {*
-String.StripL
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.StripL(Chars:String = STR_WHITESPACE): String; constref;
-
+## String.StripL
+```pascal
+function String.StripL(Chars:String = STR_WHITESPACE): String; constref;
+```
 Return a copy of the string with leading characters removed.
 *}
 function String.StripL(Chars:String = STR_WHITESPACE): String; constref;
@@ -239,10 +338,10 @@ end;
 
 
 {*
-String.StripR
-~~~~~~~~~~~~~~~~~
-.. pascal:: function String.StripR(Chars:String = STR_WHITESPACE): String; constref;
-
+## String.StripR
+```pascal
+function String.StripR(Chars:String = STR_WHITESPACE): String; constref;
+```
 Return a copy of the string with trailing characters removed.
 *}
 function String.StripR(Chars:String = STR_WHITESPACE): String; constref;
@@ -254,10 +353,10 @@ begin
 end; 
 
 (*
-String.IsAlphaNum
-~~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.IsAlphaNum(): Boolean; constref;
-
+## String.IsAlphaNum
+```pascal
+function String.IsAlphaNum(): Boolean; constref;
+```
 Test if a string only contains alpha numerical characters.
 *)
 function String.IsAlphaNum(): Boolean; constref;
@@ -280,10 +379,10 @@ begin
 end;
 
 (*
-String.IsDigit
-~~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.IsDigit(): Boolean; constref;
-
+## String.IsDigit
+```pascal
+function String.IsDigit(): Boolean; constref;
+```
 Test if a sting is a digit
 *)
 function String.IsDigit(): Boolean; constref;
@@ -308,10 +407,10 @@ begin
 end;
 
 (*
-String.IsFloat
-~~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.IsFloat(): Boolean; constref;
-
+## String.IsFloat
+```pascal
+function String.IsFloat(): Boolean; constref;
+```
 Test if a string is a floating point number
 *)
 function String.IsFloat(): Boolean; constref;
@@ -347,10 +446,10 @@ begin
 end;
 
 (*
-String.IsAlpha
-~~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.IsAlpha(): Boolean; constref;
-
+## String.IsAlpha
+```pascal
+function String.IsAlpha(): Boolean; constref;
+```
 Test if a string only contains letters a-zA-Z
 *)
 function String.IsAlpha(): Boolean; constref;
@@ -379,11 +478,16 @@ begin
   Result := StrToIntDef(ExtractFromStr(Self, Numbers), DefaultValue);
 end;
 
-(*
-String.ExtractNumbers
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.ExtractNumbers(): TExtendedArray; constref;
+function String.ExtractInteger(DefaultValue: Int64 = -1): Int64; constref;
+begin
+  Result := StrToIntDef(ExtractFromStr(Self, Numbers), DefaultValue);
+end;
 
+(*
+## String.ExtractNumbers
+```pascal
+function String.ExtractNumbers(): TExtendedArray; constref;
+```
 Extract all the numbers found in the string, as there could be floating point numbers 
 as well it reutnrs a TExtendedArray.
 *)
@@ -415,10 +519,10 @@ begin
 end;
 
 (*
-String.ExtractNumbersEx
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.ExtractNumbersEx(): TExtendedArray; constref;
-
+## String.ExtractNumbersEx
+```pascal
+function String.ExtractNumbersEx(): TExtendedArray; constref;
+```
 Extract all the numbers found in the string, this time every number 
 ends up in each their index. For example ``'1234'`` would return ``[1,2,3,4]``
 *)
@@ -439,10 +543,10 @@ begin
 end;
 
 (*
-String.FileExt
-~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.FileExt(): String; constref;
-
+## String.FileExt
+```pascal
+function String.FileExt(): String; constref;
+```
 Returns the file extension
 *)
 function String.FileExt(): String; constref;
@@ -452,10 +556,10 @@ begin
 end;
 
 (*
-String.FileName
-~~~~~~~~~~~~~~~~~~~~
-.. pascal:: function String.FileName(): String; constref;
-
+## String.FileName
+```pascal
+function String.FileName(): String; constref;
+```
 Returns the file name
 *)
 function String.FileName(): String; constref;
@@ -464,12 +568,37 @@ begin
     Result := Self.Explode('.')[0];
 end;
 
+(*
+## String.Hex
+```pascal
+function String.Hex(): string; constref;
+```
+Returns the hexadecimal value that represents the string.
+*)
+function String.Hex(): string; constref;
+var
+  n: Int32;
+begin
+  Result := '';
+  for n := 1 to Length(Self) do
+    Result := LowerCase(Result + IntToHex(Ord(Self[n]), 2));
+end;
+
+function String.Hash(): UInt32; constref;
+var
+  i: Int32;
+begin
+  Result := $811C9DC5;
+  for i := 1 to Length(Self) do
+    Result := (Result * $1000193) xor Ord(Self[i]);
+end;
+
 //---| operator overloads bellow this |---------------------------------------\\
 (*
-string * int32
-~~~~~~~~~~~~~~~~~~~~
-.. pascal:: operator * (left:String; Right:Int32): String;
-
+## operator string * int32
+```pascal
+operator * (left:String; Right:Int32): String;
+```
 Replicates the string the given amount of times. So ``'ho!' * 3`` would generate ``ho!ho!ho!``
 *)
 operator * (left: String; Right: Int32): String;
@@ -491,10 +620,10 @@ begin
 end;
 
 (*
-string in string
-~~~~~~~~~~~~~~~~~~~~
-.. pascal:: operator in (left:String; Right:String): Boolean;
-
+## operator string in string
+```pascal
+operator in (left:String; Right:String): Boolean;
+```
 Returns ``True`` if the string exists in the other string. So ``'hell' in 'hello world'`` would be ``True`` 
 *)
 operator in (left:Char; Right:String): Boolean;

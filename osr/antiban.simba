@@ -1,12 +1,11 @@
 (*
-Antiban
-=======
+# Antiban
 Methods to handle antiban.
 *)
 
 {$DEFINE SRL_ANTIBAN_INCLUDED}
 {$IFNDEF SRL_OSR}
-  {$I SRL/osr.simba}
+  {$I SRL-T/osr.simba}
 {$ENDIF}
 
 type
@@ -54,16 +53,16 @@ type
     Skills: array of ERSSkill;
     MinZoom, MaxZoom: Int32;
 
-    OnStartSleep: procedure(Task: PSleepTask);
-    OnSleeping: procedure(Task: PSleepTask; var Countdown: TCountdown);
-    OnFinishSleep: procedure(Task: PSleepTask);
+    OnStartSleep: procedure(Task: PSleepTask) of object;
+    OnSleeping: procedure(Task: PSleepTask; var Countdown: TCountdown) of object;
+    OnFinishSleep: procedure(Task: PSleepTask) of object;
 
-    OnStartBreak: procedure(Task: PBreakTask);
-    OnBreaking: procedure(Task: PBreakTask; var Countdown: TCountdown);
-    OnFinishBreak: procedure(Task: PBreakTask);
+    OnStartBreak: procedure(Task: PBreakTask) of object;
+    OnBreaking: procedure(Task: PBreakTask; var Countdown: TCountdown) of object;
+    OnFinishBreak: procedure(Task: PBreakTask) of object;
 
-    OnStartTask: procedure(Task: PAntibanTask);
-    OnFinishTask: procedure(Task: PAntibanTask);
+    OnStartTask: procedure(Task: PAntibanTask) of object;
+    OnFinishTask: procedure(Task: PAntibanTask) of object;
   end;
 
 function TAntiban.TimeRunningAtClock(TimeOfDay: String; Randomness: Double = 0.10): Int64;
@@ -79,7 +78,7 @@ begin
   Result := Max(0, Result);
 end;
 
-function TAntiban.GetActiveTasks: PAntibanTaskArray;
+function TAntiban.GetActiveTasks(): PAntibanTaskArray;
 var
   I: Int32;
 begin
@@ -90,10 +89,10 @@ end;
 
 
 (*
-Antiban.AddSleep
-~~~~~~~~~~~~~~~~
-.. pascal:: procedure TAntiban.AddSleep(Time: String; Length: Double; Randomness: Double = 0.10; LogoutChance: Double = 0.50);
-
+## Antiban.AddSleep
+```pascal
+procedure TAntiban.AddSleep(Time: String; Length: Double; Randomness: Double = 0.10; LogoutChance: Double = 0.50);
+```
 Schedule a sleep break. A sleep break is a large break, it can be any length but it's usually the several hours and also the largest one/ones.
 
 **Time** is the aproximate time you want the break to occur and should be written in a **TTimeFormat.Time_Bare** format (00:00:00). https://ollydev.github.io/SRL-Development/time.html?highlight=ttime#ttimeformat
@@ -103,12 +102,10 @@ Schedule a sleep break. A sleep break is a large break, it can be any length but
 
 This sleep break will only occur when **TAntiban.DoAntiban** is called.
 
-Example
--------
-
-.. code-block:: pascal
-
-  Antiban.AddSleep('01:30:00', 8 * ONE_HOUR, 0.1, 0.8); //ONE_HOUR constant holds the value 3600000 which is one hour in milliseconds.
+Example:
+```pascal
+Antiban.AddSleep('01:30:00', 8 * ONE_HOUR, 0.1, 0.8); //ONE_HOUR constant holds the value 3600000 which is one hour in milliseconds.
+```
 *)
 procedure TAntiban.AddSleep(Time: String; Length: Double; Randomness: Double = 0.10; LogoutChance: Double = 0.50);
 var
@@ -124,10 +121,10 @@ begin
 end;
 
 (*
-Antiban.AddBreak
-~~~~~~~~~~~~~~~~
-.. pascal:: procedure TAntiban.AddBreak(Interval, Length: Double; Randomness: Double = 0.2; LogoutChance: Double = 0.50);
-
+## Antiban.AddBreak
+```pascal
+procedure TAntiban.AddBreak(Interval, Length: Double; Randomness: Double = 0.2; LogoutChance: Double = 0.50);
+```
 Schedule a break. Breaks can be of short or medium length and should be shorter than any sleep breaks.
 
 **Interval** is the aproximate interval of time that has to pass for the break to occur and it will be repeated everytime that interval passes. In other words this runs on a loop and interval is the time in between.
@@ -135,12 +132,10 @@ Length, Randomness and LogoutChance are the same as **TAntiban.AddSleep**.
 
 This break will only occur when **TAntiban.DoAntiban** is called.
 
-Example
--------
-
-.. code-block:: pascal
-
-  Antiban.AddBreak(30 * ONE_MINUTE, 5 * ONE_MINUTE); //Every 30 minutes the script will take a 5 minute break, subject to variance from the Randomness variable.
+Example:
+```pascal
+Antiban.AddBreak(30 * ONE_MINUTE, 5 * ONE_MINUTE); //Every 30 minutes the script will take a 5 minute break, subject to variance from the Randomness variable.
+```
 *)
 procedure TAntiban.AddBreak(Interval, Length: Double; Randomness: Double = 0.2; LogoutChance: Double = 0.50);
 var
@@ -155,24 +150,25 @@ begin
   Self.Breaks += Task;
 end;
 
-procedure TAntiban.TakeSleep(var Task: TSleepTask);
+procedure TAntiban.TakeSleep(var task: TSleepTask);
 var
-  Countdown: TCountDown;
-  I: Int32;
-  ActiveTasks: PAntibanTaskArray;
+  countdown: TCountDown;
+  i: Int32;
+  activeTasks: PAntibanTaskArray;
+  marker: UInt64;
 begin
-  ActiveTasks := Self.GetActiveTasks();
-  for I := 0 to High(ActiveTasks) do
-    ActiveTasks[I]^.Countdown.Pause();
+  activeTasks := Self.GetActiveTasks();
+  for i := 0 to High(activeTasks) do
+    activeTasks[i]^.countdown.Pause();
 
-  Countdown.Init(Abs(Round(SRL.GaussRand(Task.Length, Task.Length * Task.StdVar))));
+  countdown.Init(Abs(Round(SRL.GaussRand(task.Length, task.Length * task.StdVar))));
 
-  Self.DebugLn('Sleeping for ' + SRL.MsToTime(Countdown.TimeRemaining(), TIME_FORMAL));
+  Self.DebugLn('Sleeping for ' + SRL.MsToTime(countdown.TimeRemaining(), TIME_FORMAL));
 
   if (@Self.OnStartSleep <> nil) then
-    Self.OnStartSleep(@Task);
+    Self.OnStartSleep(@task);
 
-  if Random() < Task.LogoutChance then
+  if Random() < task.LogoutChance then
   begin
     Self.DebugLn('Logging out');
 
@@ -182,99 +178,95 @@ begin
   if Random() < 0.50 then
     Self.LoseFocus();
 
-  while not Countdown.IsFinished() do
+  while not countdown.IsFinished() do
   begin
-    Self.DebugLn('Sleep time remaining: ' + SRL.MsToTime(Countdown.TimeRemaining(), TIME_FORMAL));
+    if GetTickCount() > marker  then
+    begin
+      Self.DebugLn('Sleep time remaining: ' + SRL.MsToTime(countdown.TimeRemaining(), TIME_FORMAL));
+      //OnSleeping callback only runs every 5 mins.
+      if (@Self.OnSleeping <> nil) then
+        Self.OnSleeping(@task, countdown);
+      marker := GetTickCount() + 5 * ONE_MINUTE;
+    end;
 
-    if (@Self.OnSleeping <> nil) then
-      Self.OnSleeping(@Task, Countdown);
-
-    Wait(Min(Countdown.TimeRemaining(), 60000 * 5));
+    Wait(Min(countdown.TimeRemaining(), 5 * ONE_SECOND));
   end;
 
   Self.DebugLn('Sleep finished');
 
   if (@Self.OnFinishSleep <> nil) then
-    Self.OnFinishSleep(@Task);
+    Self.OnFinishSleep(@task);
 
-    {
-  if InRange(CurrentPlayer, Low(Players), High(Players)) then
-    Players[CurrentPlayer].Login();
-}
   // Offset all tasks & breaks
-  for I := 0 to High(Self.Breaks) do
-    Self.Breaks[I].NextAtTime += GetTickCount() - (Countdown.Timeout - Countdown.Length);
+  for i := 0 to High(Self.Breaks) do
+    Self.Breaks[i].NextAtTime += GetTickCount() - (countdown.Timeout - countdown.Length);
 
-  for I := 0 to High(ActiveTasks) do
-    ActiveTasks[I]^.Countdown.Resume();
+  for i := 0 to High(activeTasks) do
+    activeTasks[i]^.countdown.Resume();
 
   // Setup next time this break happens
-  Task.NextAtTime := Self.TimeRunningAtClock(Task.Time, Task.StdVar);
+  task.NextAtTime := Self.TimeRunningAtClock(task.Time, task.StdVar);
 end;
 
-procedure TAntiban.TakeBreak(var Task: TBreakTask);
+procedure TAntiban.TakeBreak(var task: TBreakTask);
 var
-  Countdown: TCountDown;
-  I: Int32;
-  ActiveTasks: PAntibanTaskArray;
+  countdown: TCountDown;
+  i: Int32;
+  activeTasks: PAntibanTaskArray;
 begin
-  ActiveTasks := Self.GetActiveTasks();
-  for I := 0 to High(ActiveTasks) do
-    ActiveTasks[I]^.Countdown.Pause();
+  activeTasks := Self.GetActiveTasks();
+  for i := 0 to High(activeTasks) do
+    activeTasks[i]^.countdown.Pause();
 
-  Countdown.Init(Abs(Round(SRL.GaussRand(Task.Length, Task.Length * Task.StdVar))));
+  countdown.Init(Abs(Round(SRL.GaussRand(task.Length, task.Length * task.StdVar))));
 
-  Self.DebugLn('Taking a break for ' + SRL.MsToTime(Countdown.TimeRemaining(), TIME_FORMAL));
+  Self.DebugLn('Taking a break for ' + SRL.MsToTime(countdown.TimeRemaining(), TIME_FORMAL));
 
   if (@Self.OnStartBreak <> nil) then
-    Self.OnStartBreak(@Task);
+    Self.OnStartBreak(@task);
 
-  if Random() < Task.LogoutChance then
+  if Random() < task.LogoutChance then
   begin
     Self.DebugLn('Logging out');
-
     Logout.ClickLogout();
   end;
 
   if Random() < 0.50 then
     Self.LoseFocus();
 
-  I := 0;
-  while not Countdown.IsFinished() do
+  i := 0;
+  while not countdown.IsFinished() do
   begin
-    if (Inc(I) mod 12 = 0) then
-      Self.DebugLn('Break time remaining: ' + ToString(CountDown.TimeRemaining() div 60000) + ' minutes');
+    if (Inc(i) mod 12 = 0) then
+      Self.DebugLn('Break time remaining: ' + ToString(countdown.TimeRemaining() div 60000) + ' minutes');
 
     if (@Self.OnBreaking <> nil) then
-      Self.OnBreaking(@Task, Countdown);
+      Self.OnBreaking(@task, countdown);
 
-    Wait(5000);
+    Wait(Min(countdown.TimeRemaining(), 5 * ONE_SECOND));
   end;
 
   Self.DebugLn('Break finished');
 
   if (@Self.OnFinishBreak <> nil) then
-    Self.OnFinishBreak(@Task);
-
- // if InRange(CurrentPlayer, Low(Players), High(Players)) then
- //   Players[CurrentPlayer].Login();
+    Self.OnFinishBreak(@task);
 
   // Offset all tasks & breaks
-  for I := 0 to High(Self.Breaks) do
-    Self.Breaks[I].NextAtTime += GetTickCount() - (Countdown.Timeout - Countdown.Length);
+  for i := 0 to High(Self.Breaks) do
+    Self.Breaks[i].NextAtTime += GetTickCount() - (countdown.Timeout - countdown.Length);
 
-  for I := 0 to High(ActiveTasks) do
-    ActiveTasks[I]^.Countdown.Resume();
+  for I := 0 to High(activeTasks) do
+    activeTasks[i]^.countdown.Resume();
 
   // Setup next time this break happens
-  Task.NextAtTime := GetTimeRunning() + Abs(SRL.GaussRand(Task.Interval, Task.Interval * Task.StdVar));
+  task.NextAtTime := GetTimeRunning() + Abs(SRL.GaussRand(task.Interval, task.Interval * task.StdVar));
 end;
 
 (*
-Antiban.AddTask
-~~~~~~~~~~~~~~~
-.. pascal:: procedure TAntiban.AddTask(Interval: Double; Method: TAntibanMethod; Randomness: Double = 0.2); overload;
-
+## Antiban.AddTask
+```pascal
+procedure TAntiban.AddTask(Interval: Double; Method: TAntibanMethod; Randomness: Double = 0.2); overload;
+```
 Schedule a antiban task. An antiban task can be any procedure but they are should be short things that won't break your main script.
 
 **Interval** is the aproximate interval of time that has to pass for the antiban task to occur and it will be repeated everytime that interval passes.
@@ -282,12 +274,10 @@ Schedule a antiban task. An antiban task can be any procedure but they are shoul
 
 This task will only occur when **TAntiban.DoAntiban** is called.
 
-Example
--------
-
-.. code-block:: pascal
-
-  Antiban.AddTask(15 * ONE_MINUTE, @Antiban.HoverSkills); //Every 15 minutes the script will hover the skills.
+Example:
+```pascal
+Antiban.AddTask(15 * ONE_MINUTE, @Antiban.HoverSkills); //Every 15 minutes the script will hover the skills.
+```
 *)
 procedure TAntiban.AddTask(Interval: Double; Method: TAntibanMethod; Randomness: Double = 0.2);
 var
@@ -302,7 +292,7 @@ begin
   Self.Tasks += Task;
 end;
 
-function TAntiban.DoBreak: Boolean;
+function TAntiban.DoBreak(): Boolean;
 var
   I: Int32;
 begin
@@ -317,7 +307,7 @@ begin
     end;
 end;
 
-function TAntiban.DoSleep: Boolean;
+function TAntiban.DoSleep(): Boolean;
 var
   I: Int32;
 begin
@@ -351,26 +341,24 @@ begin
 end;
 
 (*
-Antiban.DoAntiban
-~~~~~~~~~~~~~~~~~
-.. pascal:: function TAntiban.DoAntiban(CheckBreaks: Boolean = True; CheckSleeps: Boolean = True): Boolean;
-
+## Antiban.DoAntiban
+```pascal
+function TAntiban.DoAntiban(CheckBreaks: Boolean = True; CheckSleeps: Boolean = True): Boolean;
+```
 Antiban.DoAntiban should be called in your script when antiban sleeps, breaks or tasks won't break your script.
 When this is called, the setup sleep breaks, breaks and tasks will be checked, if enough time has passed to perform any of them (subject to the parameters you pass in too), they will be performed, otherwise, nothing will happen.
 
-Example
--------
+Example:
+```pascal
+Antiban.AddTask(15 * ONE_MINUTE, @Antiban.HoverSkills);
 
-.. code-block:: pascal
-
-  Antiban.AddTask(15 * ONE_MINUTE, @Antiban.HoverSkills);
-
-  while True do        //Infinite loop
-    Antiban.DoAntiban; //Antiban.HoverSkills will be called every time 15 minutes passed when this is called.
+while True do        //Infinite loop
+  Antiban.DoAntiban; //Antiban.HoverSkills will be called every time 15 minutes passed when this is called.
+```
 *)
 function TAntiban.DoAntiban(CheckBreaks: Boolean = True; CheckSleeps: Boolean = True): Boolean;
 var
-  I, J: Int32;
+  I: Int32;
   Task: PAntibanTask;
   ActiveTasks: array of PAntibanTask;
 begin
@@ -416,67 +404,66 @@ end;
 
 
 (*
-Built in Antiban Tasks
-~~~~~~~~~~~~~~~~~~~~~~
-.. pascal:: procedure TAntiban.SmallRandomMouse;
-.. pascal:: procedure TAntiban.RandomMouse;
-.. pascal:: procedure TAntiban.RandomRotate;
-.. pascal:: procedure TAntiban.HoverSkill(Skill: ERSSkill; HoverTime: Int32; ReturnToCurrentTab: Boolean);
-.. pascal:: procedure TAntiban.HoverSkills;
-.. pascal:: procedure TAntiban.LoseFocus;
-.. pascal:: procedure TAntiban.LoseFocus(Idle: Int32); overload;
-.. pascal:: procedure TAntiban.RandomTab;
-.. pascal:: procedure TAntiban.RandomRightClick;
-.. pascal:: procedure TAntiban.AdjustZoom;
-.. pascal:: procedure TAntiban.SwivelNear(start: TBox; radius: Int32; Iterations: Int32=1); overload;
-.. pascal:: procedure TAntiban.Swivel;
-
+## Built in Antiban Tasks
+```pascal
+procedure TAntiban.SmallRandomMouse;
+procedure TAntiban.RandomMouse;
+procedure TAntiban.RandomRotate;
+procedure TAntiban.HoverSkill(Skill: ERSSkill; HoverTime: Int32; ReturnToCurrentTab: Boolean);
+procedure TAntiban.HoverSkills;
+procedure TAntiban.LoseFocus;
+procedure TAntiban.LoseFocus(Idle: Int32); overload;
+procedure TAntiban.RandomTab;
+procedure TAntiban.RandomRightClick;
+procedure TAntiban.AdjustZoom;
+procedure TAntiban.SwivelNear(start: TBox; radius: Int32; Iterations: Int32=1); overload;
+procedure TAntiban.Swivel;
+```
 SRL built in Antiban Tasks that can be added with **TAntiban.AddTask**.
 
-Example
--------
-
-.. code-block:: pascal
-
-  Antiban.AddTask(15 * ONE_MINUTE, @Antiban.HoverSkills);
+Example:
+```pascal
+Antiban.AddTask(15 * ONE_MINUTE, @Antiban.HoverSkills);
+```
 *)
-procedure TAntiban.SmallRandomMouse;
+procedure TAntiban.SmallRandomMouse();
 var
-  B: TBox;
-  P: TPoint;
+  b: TBox;
+  p: TPoint;
 begin
   Self.DebugLn('Random Mouse (Small)');
 
-  B := Box(Mouse.Position(), 350, 350);
+  b := Box(Mouse.Position(), 350, 350);
   repeat
-    P := SRL.RandomPoint(B);
-  until P.DistanceTo(B.Middle) < 50; // Make sure we move at least 50 distance
+    P := SRL.RandomPoint(b);
+  until p.DistanceTo(b.Center()) < 50; // Make sure we move at least 50 distance
 
-  Mouse.Move(P);
+  Mouse.Move(p);
 end;
 
-procedure TAntiban.RandomMouse;
+procedure TAntiban.RandomMouse();
 var
-  CustomMouse: TMouse;
+  customMouse: TMouse;
+  i: Int32;
 begin
   Self.DebugLn('Random Mouse');
 
-  CustomMouse := Mouse;
-  CustomMouse.Speed += Random(1, 5);
+  customMouse := Mouse;
+  customMouse.Speed += Random(1, 5);
 
-  for 1 to SRL.TruncatedGauss(1, 6) do
+  for i := 1 to SRL.TruncatedGauss(1, 6) do
   begin
     if Random() < 0.30 then
-      CustomMouse.Move(GetClientBounds().Expand(150), True, MOUSE_DISTRIBUTION_GAUSS)
+      customMouse.Move(GetClientBounds().Expand(150), True, EMouseDistribution.MOUSE_DISTRIBUTION_GAUSS)
     else
-      CustomMouse.Move(GetClientBounds().Expand(150), True, MOUSE_DISTRIBUTION_RANDOM);
+      customMouse.Move(GetClientBounds().Expand(150), True, EMouseDistribution.MOUSE_DISTRIBUTION_RANDOM);
 
     if Random() < 0.50 then
       Wait(0, 1000, wdLeft);
   end;
 end;
 
-procedure TAntiban.RandomRotate;
+procedure TAntiban.RandomRotate();
 begin
   Self.DebugLn('Random Rotate');
 
@@ -486,7 +473,7 @@ begin
   end;
 end;
 
-procedure TAntiban.HoverSkill(Skill: ERSSkill; HoverTime: Int32; ReturnToCurrentTab: Boolean);
+procedure TAntiban.HoverSkill(skill: ERSSkill; HoverTime: Int32; returnToCurrentTab: Boolean);
 var
   Tab: ERSGameTab;
 begin
@@ -503,7 +490,7 @@ begin
   end;
 end;
 
-procedure TAntiban.HoverSkills;
+procedure TAntiban.HoverSkills();
 begin
   if Self.Skills = [] then
   begin
@@ -515,19 +502,19 @@ begin
   HoverSkill(Self.Skills[Random(Length(Self.Skills))], SRL.TruncatedGauss(1000, 10000), SRL.Dice(50));
 end;
 
-procedure TAntiban.LoseFocus;
+procedure TAntiban.LoseFocus();
 begin
   RSClient.LoseFocus();
 end;
 
-procedure TAntiban.LoseFocus(Idle: Int32); overload;
+procedure TAntiban.LoseFocus(idle: Int32); overload;
 begin
   RSClient.LoseFocus();
 
   Wait(Idle);
 end;
 
-procedure TAntiban.RandomTab;
+procedure TAntiban.RandomTab();
 begin
   Self.DebugLn('Random Tab');
 
@@ -556,11 +543,11 @@ begin
   Wait(0, 8000, wdLeft);
 end;
 
-procedure TAntiban.RandomRightClick;
+procedure TAntiban.RandomRightClick();
 begin
   Self.DebugLn('Random Right Click');
 
-  Mouse.Move(GetClientBounds(), True, MOUSE_DISTRIBUTION_RANDOM);
+  Mouse.Move(GetClientBounds(), True, EMouseDistribution.MOUSE_DISTRIBUTION_RANDOM);
 
   if ChooseOption.Open() then
   begin
@@ -573,30 +560,30 @@ begin
   end;
 end;
 
-procedure TAntiban.AdjustZoom;
+procedure TAntiban.AdjustZoom();
 var
-  Zoom, NewZoom: Int32;
-  Attempts: Int32;
+  zoom, newZoom: Int32;
+  attempts: Int32;
 begin
-  if (Self.MaxZoom = 0) then
+  if Self.MaxZoom = 0 then
     Self.MaxZoom := 100;
 
-  Zoom := Options.GetZoomLevel();
+  zoom := MM2MS.GetZoomLevel(); //use mm2ms zoom so we don't have to color search. if it's not setup it will be setup.
+  zoom := Min(Self.MaxZoom, Max(Self.MinZoom, Options.GetZoomLevel())); //ensure the zoom is within range.
 
   repeat
-    Inc(Attempts);
-    if Attempts > 100 then
+    Inc(attempts);
+    if attempts > 100 then
       Exit;
 
-    NewZoom := SRL.SkewedRand(Zoom, Self.MinZoom - 10, Self.MaxZoom + 10);
-  until (NewZoom >= Self.MinZoom) and (NewZoom <= Self.MaxZoom) and (Abs(Zoom - NewZoom) > 15);
+    newZoom := SRL.SkewedRand(zoom, Self.MinZoom, Self.MaxZoom);
+  until Abs(zoom - newZoom) > 15;
 
-  Self.DebugLn('Adjust zoom: ' + ToString(NewZoom));
-
+  Self.DebugLn('Adjust zoom: ' + ToString(newZoom));
   Options.SetZoomLevel(NewZoom);
 end;
 
-function TAntiban.DismissRandom: Boolean;
+function TAntiban.DismissRandom(): Boolean;
 var
   Name: String;
   Number: Int32;
@@ -622,11 +609,13 @@ begin
 
         Wait(5000);
       end;
+
+      Result := True; //TODO...
     end;
   end;
 end;
 
-function TAntiban.GenerateSwivelPoints(A: TPoint; invCircularity:Double; curls: Int32; baseRad:Int32; direction:Boolean): TPointArray;
+function TAntiban.GenerateSwivelPoints(a: TPoint; invCircularity: Double; curls: Int32; baseRad:Int32; direction:Boolean): TPointArray;
 var
   t,o,rr: Double;
   i,j,k,rad: Int32;
@@ -715,9 +704,11 @@ begin
   end;
 end;
 
-procedure TAntiban.SwivelNear(start: TBox; radius: Int32; Iterations: Int32=1); overload;
+procedure TAntiban.SwivelNear(start: TBox; radius: Int32; iterations: Int32 = 1); overload;
+var
+  i: Int32;
 begin
-  for 1 to Iterations do
+  for i := 1 to Iterations do
   begin
     Self.SwivelNear(srl.RandomPoint(start), 1/2, Round(srl.TruncatedGauss(1,4)), radius, srl.TruncatedGauss(0.0,1.25) > 0.5, Random(12,22), 9, 14);
     if Random() < 0.5 then Wait(0, 300, wdLeft);
@@ -725,11 +716,29 @@ begin
 end;
 
 procedure TAntiban.Swivel(); overload;
+var
+  i: Int32;
 begin
-  for 1 to Round(srl.TruncatedGauss(1,4)) do
+  for i := 1 to Round(srl.TruncatedGauss(1,4)) do
   begin
     Self.SwivelNear(mouse.Position, 1/2, Round(srl.TruncatedGauss(1,4)), Random(25,40), srl.TruncatedGauss(0.0,1.25) > 0.5, Random(12,22), 9, 14);
     if Random() < 0.5 then Wait(0, 300, wdLeft);
+  end;
+end;
+
+procedure TAntiban.RandomKeyboard();
+begin
+  case Random(100) of
+    0..74:
+      case Random(3) of
+        0: Keyboard.PressKey(VK_LEFT);
+        1: Keyboard.PressKey(VK_RIGHT);
+        2: Keyboard.PressKey(VK_UP);
+      end;
+    75..84: Keyboard.PressKey(KEYBOARD_FKEYS[Random(0, High(KEYBOARD_FKEYS))]);
+    85..94: Keyboard.PressKey(KEYBOARD_MISC[Random(0, High(KEYBOARD_MISC))]);
+    95..97: Keyboard.PressKey(KEYBOARD_CHARACTERS[Random(0, High(KEYBOARD_CHARACTERS))]);
+    98, 99: Keyboard.PressKey(KEYBOARD_NUMBERS[Random(0, High(KEYBOARD_NUMBERS))]);
   end;
 end;
 
@@ -743,7 +752,7 @@ begin
   Result := SRL.MsToTime(Max(0, Round(Task.NextAtTime - GetTimeRunning())), TIME_BARE);
 end;
 
-procedure TAntiban.SimulateBreaks;
+procedure TAntiban.SimulateBreaks();
 const
   TEST_DAYS: UInt64 = 1000;
 var
@@ -777,9 +786,8 @@ begin
 end;
 
 (*
-var Antiban
-~~~~~~~~~~~
-  Global Antiban variable.
+## var Antiban
+Global Antiban variable.
 *)
 var
   Antiban: TAntiban;
