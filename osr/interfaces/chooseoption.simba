@@ -178,7 +178,11 @@ begin
 
   for i := 0 to High(Result) do
   begin
-    b.Y1 := Self.Bounds.Y1 + (i * 15);
+    if RSClient.Client = ERSClient.OFFICIAL then
+      b.Y1 := Self.Bounds.Y1 + 2 + (i * 15)
+    else
+      b.Y1 := Self.Bounds.Y1 + (i * 15);
+
     b.Y2 := b.Y1 + 15;
 
     if (b.Y2 > Self.Bounds.Y2) then Exit;

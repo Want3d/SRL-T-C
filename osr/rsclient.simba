@@ -274,7 +274,7 @@ begin
   end;
 
   case win.GetRootWindow().GetTitle() of
-    'Old School RuneScape': Result := ERSClient.LEGACY;
+    'Old School RuneScape': Result := ERSClient.OFFICIAL;
     'RuneLite': Result := ERSClient.RUNELITE;
   end;
 end;
@@ -355,7 +355,7 @@ begin
   inherited;
   RSClient.Setup();
 end;
-
+{$IFNDEF SRL_DISABLE_REMOTEINPUT}
 procedure TRemoteInput.Setup(); override;
 begin
   inherited;
@@ -366,3 +366,4 @@ begin
     RSClient.ClientModeChanged();
   end;
 end;
+{$ENDIF}

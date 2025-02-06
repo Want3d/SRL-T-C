@@ -10,11 +10,38 @@ Miscellaneous methods and variables
 
 const
   RS_ITEM_SHADOW       = $202030;
-  RS_ITEM_BORDER       = $010000;
 
-  RS_ITEM_YELLOW_STACK = $00FFFF;
-  RS_ITEM_WHITE_STACK  = $FFFFFF;
-  RS_ITEM_GREEN_STACK  = $80FF00;
+function RS_ITEM_BORDER: Int32;
+begin
+  if RSClient.Client = ERSClient.OFFICIAL then
+    Result := 0
+  else
+    Result := $010000; 
+end; 
+
+function RS_ITEM_YELLOW_STACK: Int32;
+begin
+  if RSClient.Client = ERSClient.OFFICIAL then
+    Result := 65278
+  else
+    Result := $00FFFF; 
+end; 
+
+function RS_ITEM_WHITE_STACK: Int32;
+begin
+  if RSClient.Client = ERSClient.OFFICIAL then
+    Result := 16711422
+  else
+    Result := $FFFFFF; 
+end; 
+
+function RS_ITEM_GREEN_STACK: Int32;
+begin
+  if RSClient.Client = ERSClient.OFFICIAL then
+    Result := 65280
+  else
+    Result := $80FF00;
+end; 
 
 (*
 ## SRL.GetXPAtLevel
